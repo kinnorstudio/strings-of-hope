@@ -32,6 +32,7 @@ const SOH_FLAGS={
 /* what the Learn hub teases as coming */
 const SOH_WORKSHOP_NAMES={ jacob:'Jacob’s Universe', shamayim:'Shamayim Harp', chen:'Chen · Symmetry',
   sightread:'Sight-Reading', eartraining:'Which Mode?', rhythm:'Rhythm', repertoire:'Repertoire' };
+function sohCloudOn(){ return !!(window.SOH_SYNC && SOH_SYNC.configured); }
 function sohLabs(){ try{ return localStorage.getItem('soh-labs')==='1'; }catch(e){ return false; } }
 /* What Harpie is told the app contains — derived from the course and the
    live flags. It was hardcoded as "5 units, 42 chapters" against a real
@@ -3688,13 +3689,15 @@ const CREDITS = [
     {n:'Signed in: your private account', l:'Synced', d:'', gen:'signedin'},
     {n:'Never leaves this device', l:'Device only', d:'', gen:'device'},
     {n:'The microphone', l:'Local only', d:'The mic is used only for the tuner and ear-training, entirely on your device. It is never recorded, saved, or sent anywhere.'},
-    {n:'Your data is yours', l:'Reset · Delete', d:'You can wipe your progress, or delete everything we hold, at any time — from the You tab. Deleting removes your account’s data from our database, not just this device.'},
+    {n:'Your data is yours', l:'Reset · Delete', d:'You can wipe your progress, or delete everything, at any time — from the You tab. If you are signed in, deleting also removes your account’s data from our database, not just this device.'},
   ]},
 ];
 /* The privacy text, written by the registry rather than by memory. */
 function sohPrivacyStorage(kind){
   const list=a=>a.join(' · ');
-  if(kind==='signedout') return 'Until you sign in, everything the app knows about you is stored in this browser and goes nowhere else. No account, no upload.';
+  if(kind==='signedout') return sohCloudOn()
+    ? 'Until you sign in, everything the app knows about you is stored in this browser and goes nowhere else. No account, no upload.'
+    : 'Everything the app knows about you is stored in this browser, on this device, and goes nowhere else. There is no account and nothing is uploaded.';
   if(kind==='signedin'){
     const items=(typeof sohPrivacyAccountList==='function')?sohPrivacyAccountList():[];
     return 'Signing in saves your journey to a private account so it follows you between devices:'
@@ -3708,7 +3711,7 @@ function buildCredits(){
   const host=document.getElementById('creditsBody'); if(!host) return;
   host.innerHTML=CREDITS.map(sec=>`<div class="creds-sec">
     <div class="creds-h">${sec.t}</div>
-    ${sec.items.map(it=>`<div class="creds-item"><div class="creds-top"><span class="creds-n">${it.n}</span><span class="creds-lic">${it.l}</span></div><p class="creds-d">${it.gen?sohPrivacyStorage(it.gen):it.d}</p></div>`).join('')}
+    ${sec.items.filter(it=>!(it.gen==='signedin' && !sohCloudOn())).map(it=>(it.gen==='signedout'&&!sohCloudOn())?Object.assign({},it,{n:'On this device only'}):it).map(it=>`<div class="creds-item"><div class="creds-top"><span class="creds-n">${it.n}</span><span class="creds-lic">${it.l}</span></div><p class="creds-d">${it.gen?sohPrivacyStorage(it.gen):it.d}</p></div>`).join('')}
   </div>`).join('') + `<p class="creds-foot">Believe you have found something copyrighted used incorrectly? Tell us and we will fix it at once. Strings of Hope is built to be 100% free and legal.<br><br>Strings of Hope · v${(typeof SOH_VERSION!=='undefined')?SOH_VERSION:'beta'} · <a href="mailto:info@edenrise.com?subject=Strings%20of%20Hope%20feedback" style="color:var(--gold-deep)">send feedback</a></p>`;
   triggerReveals(document.getElementById('view-credits'));
 }
@@ -3810,7 +3813,7 @@ function buildSpirit(){ try{ if(typeof renderSongCard==='function') renderSongCa
    of the Observe→Diagnose→Learn loop. The constant below is only the
    fallback (no SW / no Cache API); tools/keys-test.js asserts it matches
    sw.js so the two can never silently disagree again. */
-let SOH_VERSION = '2026.07.19 · beta';
+let SOH_VERSION = '2026.10.27 · beta';
 (async function sohResolveBuild(){
   try{
     if(!('caches' in window)) return;
@@ -3919,12 +3922,13 @@ function buildYou(){
     <div class="prof-data">
       <p class="pd-lead">${(window.SOH_SYNC&&SOH_SYNC.user&&!SOH_SYNC.user.isAnonymous)
         ? 'Your journey is saved to your private account, so it follows you between devices.'
-        : 'Right now everything is saved in this browser only. Sign in above to keep it across devices.'}</p>
+        : sohCloudOn() ? 'Right now everything is saved in this browser only. Sign in above to keep it across devices.'
+        : 'Everything is saved privately on this device. Add the app to your Home Screen to keep it safe.'}</p>
       <div class="pd-row">
         <button class="pd-btn" id="dataReset">Reset my progress</button>
         <button class="pd-btn danger" id="dataDelete">Delete my data</button>
       </div>
-      <p class="pd-note">Reset clears your lessons, streak and badges but keeps your harps and name. Delete removes everything, including from our database.</p>
+      <p class="pd-note">Reset clears your lessons, streak and badges but keeps your harps and name. ${sohCloudOn()?'Delete removes everything, including from our database.':'Delete removes everything from this device.'}</p>
     </div>
 
     <div class="prof-remind">
@@ -3957,7 +3961,7 @@ function buildYou(){
   });
   el.querySelectorAll('.pr-ts-b').forEach(b=>b.addEventListener('click',()=>{ sohSetTextSize(b.dataset.ts); buildYou(); buzz(); }));
   el.querySelector('#dataReset')?.addEventListener('click',async()=>{
-    if(!confirm('Reset your progress?\n\nThis clears your lessons, streak, badges and certificates on every device. Your harps, your name and your settings stay.\n\nThis cannot be undone.')) return;
+    if(!confirm('Reset your progress?\n\nThis clears your lessons, streak, badges and certificates'+(sohCloudOn()?' on every device':' on this device')+'. Your harps, your name and your settings stay.\n\nThis cannot be undone.')) return;
     if(typeof sohResetProgress==='function') await sohResetProgress();
     else { try{ for(let i=localStorage.length-1;i>=0;i--){ const k=localStorage.key(i); if(sohIsResettable(k)) localStorage.removeItem(k); } }catch(e){} }
     try{ loadJournal(); }catch(e){}
@@ -3966,7 +3970,7 @@ function buildYou(){
     alert('Your progress has been reset. Your harps and settings are untouched.');
   });
   el.querySelector('#dataDelete')?.addEventListener('click',async()=>{
-    if(!confirm('Delete everything?\n\nThis removes your progress, harps, name and settings from this device AND from our database, then signs you out.\n\nThis cannot be undone.')) return;
+    if(!confirm('Delete everything?\n\n'+(sohCloudOn()?'This removes your progress, harps, name and settings from this device AND from our database, then signs you out.':'This removes your progress, harps, name and settings from this device.')+'\n\nThis cannot be undone.')) return;
     if(!confirm('Last check — really delete all your Strings of Hope data?')) return;
     if(typeof sohDeleteAllData==='function') await sohDeleteAllData();
     else { try{ for(let i=localStorage.length-1;i>=0;i--){ const k=localStorage.key(i); if(sohSyncable(k)) localStorage.removeItem(k); } }catch(e){} }
@@ -4984,9 +4988,11 @@ function sohMaybeOnboard(){
     // The gate appears ASYNCHRONOUSLY once Firebase resolves, which can land after
     // our timer. If a gate is still *coming* (Firebase configured + no auth choice
     // made yet), stay closed and let the gate-dismissal path open us instead.
-    const cfg=window.SOH_FIREBASE_CONFIG;
+    // Ask "is cloud ON?" (SOH_SYNC.configured honours the SOH_CLOUD_ENABLED switch),
+    // never "is a config present?" — in a local-only build the config stays in the
+    // file but no gate will ever come, and onboarding would wait forever.
     let choice=null; try{ choice=localStorage.getItem('soh-auth-choice'); }catch(e){}
-    if(cfg && cfg.apiKey && choice!=='1' && !(window.SOH_SYNC && SOH_SYNC.user)) return;
+    if(sohCloudOn() && choice!=='1' && !(window.SOH_SYNC && SOH_SYNC.user)) return;
     const ob=document.getElementById('obPanel');
     if(ob && !ob.hidden) return;                                      // already open
     sohOnboardOpen();

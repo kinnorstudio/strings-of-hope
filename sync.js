@@ -7,7 +7,7 @@
 (function(){
   const FB_VER = '10.12.2';
   const cfg = window.SOH_FIREBASE_CONFIG || {};
-  const configured = !!(cfg.apiKey && cfg.apiKey.length > 10 && cfg.projectId);
+  const configured = window.SOH_CLOUD_ENABLED !== false && !!(cfg.apiKey && cfg.apiKey.length > 10 && cfg.projectId);
   window.SOH_SYNC = { configured, user:null, status: configured?'loading':'unconfigured' };
 
   // What syncs is DECLARED in keys.js, never guessed from a prefix. A prefix
@@ -262,7 +262,7 @@ function sohRenderAuth(){
   const G='<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 01-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.9-3c-1 .7-2.4 1.1-4 1.1-3 0-5.6-2-6.6-4.8H1.4v3.1A12 12 0 0012 24z"/><path fill="#FBBC05" d="M5.4 14.4a7.2 7.2 0 010-4.8V6.5H1.4a12 12 0 000 11z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.5 1.8l3.4-3.4A12 12 0 001.4 6.5l4 3.1C6.4 6.8 9 4.8 12 4.8z"/></svg>';
   if(!S.configured){
     el.innerHTML=`<div class="auth-k">Cloud sync</div><div class="auth-t">Not connected yet</div>
-      <p class="auth-p">Your progress is saved on this device. Once Google sign-in is connected, you'll be able to sync across all your devices.</p>`;
+      <p class="auth-p">Your progress is saved privately on this device. Adding the app to your Home Screen keeps it safe. Syncing across devices is coming back soon.</p>`;
     return;
   }
   const esc=s=>String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
